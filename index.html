@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Посмотрим — сервис поиска культурных событий</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js" defer></script>
+    <script src="data.js" defer></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">Посмотрим</div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+                <a href="afisha.html" class="nav-cta">Найти событие</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="blob-field">
+                <div class="blob blob--1"></div>
+                <div class="blob blob--2"></div>
+                <div class="blob blob--3"></div>
+            </div>
+
+            <div class="container">
+                <div class="hero-copy">
+                    <div class="eyebrow-chips">
+                        <span class="chip">Театр</span>
+                        <span class="chip">Кино</span>
+                        <span class="chip">Выставки</span>
+                        <span class="chip">Концерты</span>
+                    </div>
+
+                    <h1>Сервис поиска культурных событий рядом</h1>
+
+                    <p class="description">
+                        «Посмотрим» решает вопрос «куда пойти?» за пару секунд. Здесь собраны
+                        культурные события Москвы, которые можно сразу отсортировать по расстоянию,
+                        времени и настроению — для тех, кто хочет быть в теме, но не готов тратить
+                        на поиск полдня. Открыл — выбрал — пошёл.
+                    </p>
+
+                    <div class="search-box">
+                        <a href="afisha.html" class="btn-large">
+                            Начать поиск
+                            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                <path d="M4 10h12M11 5l5 5-5 5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Карточки заполняются случайными событиями скриптом home-events.js -->
+                <div class="card-stack">
+                    <a class="floating-card card--theatre" href="afisha.html"></a>
+                    <a class="floating-card card--film" href="afisha.html"></a>
+                    <a class="floating-card card--music" href="afisha.html"></a>
+                </div>
+            </div>
+        </section>
+
+        <section class="how-it-works">
+            <div class="container">
+                <h2>Как работает сервис</h2>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <p>Пользователь вводит адрес или район</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <p>Сервис показывает культурные события рядом</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <p>Пользователь выбирает мероприятие и переходит на страницу события</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <span>© 2026 Посмотрим</span>
+            <span>Москва</span>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подборка — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2 id="collection-title">Подборка</h2>
+            <p id="collection-description"></p>
+            
+            <div class="events-grid" id="events-container">
+                <p>Загрузка...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const collectionId = urlParams.get('id');
+            
+            const collection = collections.find(c => c.id === collectionId);
+            
+            if (!collection) {
+                document.getElementById('collection-title').textContent = 'Подборка не найдена';
+                document.getElementById('events-container').innerHTML = '<p>Подборка не найдена</p>';
+                return;
+            }
+            
+            document.title = `${collection.name} — Посмотрим`;
+            document.getElementById('collection-title').textContent = collection.name;
+            document.getElementById('collection-description').textContent = collection.description;
+            
+            // Filter events by collection
+            const collectionEvents = events.filter(event => 
+                event.collections && event.collections.includes(collectionId)
+            );
+            
+            if (collectionEvents.length === 0) {
+                document.getElementById('events-container').innerHTML = '<p>В этой подборке пока нет событий</p>';
+                return;
+            }
+            
+            document.getElementById('events-container').innerHTML = collectionEvents.map(event => `
+                <div class="event-card">
+                    ${renderEventCardPhoto(event)}
+                    <h3>${event.name}</h3>
+                    <p><strong>Тип:</strong> ${getEventTypeName(event.type)}</p>
+                    <p><strong>Адрес:</strong> ${event.address}</p>
+                    <p><strong>Дата:</strong> ${formatDate(event.start_date, event.end_date)}</p>
+                    <p><strong>Цена:</strong> ${formatPrice(event.price)}</p>
+                    <a href="event.html?id=${event.id}" class="btn-small">Подробнее</a>
+                </div>
+            `).join('');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Событие — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <div class="event-detail" id="event-detail">
+                <p>Загрузка данных о событии...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Строит HTML листалки фото события (главное фото + галерея).
+        // Если фото нет — возвращает пустую строку.
+        function buildGalleryHTML(images) {
+            if (images.length === 0) return '';
+
+            const slides = images.map(src => `
+                <div class="gallery-slide">${buildImgWithFallback(src, '', 'hide')}</div>
+            `).join('');
+
+            if (images.length === 1) {
+                return `<div class="gallery-carousel"><div class="gallery-track">${slides}</div></div>`;
+            }
+
+            const dots = images.map((_, i) =>
+                `<span class="gallery-dot${i === 0 ? ' active' : ''}" data-index="${i}"></span>`
+            ).join('');
+
+            return `
+                <div class="gallery-carousel" id="gallery-carousel">
+                    <div class="gallery-track" id="gallery-track">${slides}</div>
+                    <button type="button" class="gallery-btn gallery-prev" id="gallery-prev" aria-label="Предыдущее фото">‹</button>
+                    <button type="button" class="gallery-btn gallery-next" id="gallery-next" aria-label="Следующее фото">›</button>
+                    <div class="gallery-dots" id="gallery-dots">${dots}</div>
+                </div>`;
+        }
+
+        // Инициализирует управление листалкой: стрелки, точки, свайп на мобильных
+        function initGalleryCarousel() {
+            const track = document.getElementById('gallery-track');
+            if (!track || track.children.length <= 1) return;
+
+            const slidesCount = track.children.length;
+            const dots = document.querySelectorAll('#gallery-dots .gallery-dot');
+            const prevBtn = document.getElementById('gallery-prev');
+            const nextBtn = document.getElementById('gallery-next');
+            let index = 0;
+
+            function goTo(i) {
+                index = (i + slidesCount) % slidesCount;
+                track.style.transform = `translateX(-${index * 100}%)`;
+                dots.forEach((dot, di) => dot.classList.toggle('active', di === index));
+            }
+
+            if (prevBtn) prevBtn.addEventListener('click', () => goTo(index - 1));
+            if (nextBtn) nextBtn.addEventListener('click', () => goTo(index + 1));
+            dots.forEach(dot => {
+                dot.addEventListener('click', () => goTo(parseInt(dot.dataset.index, 10)));
+            });
+
+            // Свайп для мобильных устройств
+            let startX = null;
+            track.addEventListener('touchstart', e => {
+                startX = e.touches[0].clientX;
+            }, { passive: true });
+            track.addEventListener('touchend', e => {
+                if (startX === null) return;
+                const diff = e.changedTouches[0].clientX - startX;
+                if (Math.abs(diff) > 40) goTo(diff > 0 ? index - 1 : index + 1);
+                startX = null;
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const eventDetail = document.getElementById('event-detail');
+            
+            // Получаем ID события из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = parseInt(urlParams.get('id'));
+            
+            if (!eventId) {
+                eventDetail.innerHTML = '<p>Событие не найдено.</p>';
+                return;
+            }
+            
+            // Находим событие в базе данных
+            const event = events.find(e => e.id === eventId);
+            
+            if (!event) {
+                eventDetail.innerHTML = '<p>Событие не найдено.</p>';
+                return;
+            }
+            
+            // Обновляем заголовок страницы
+            document.title = `${event.name} — Посмотрим`;
+            
+            // Инициализация карты
+            setTimeout(async function() {
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    mapContainer.innerHTML = ''; // Очистить контейнер
+                    
+                    const map = L.map('map').setView([event.coords.lat, event.coords.lng], 15);
+                    
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
+                    
+                    // Добавить маркер места события
+                    const eventMarker = L.marker([event.coords.lat, event.coords.lng])
+                        .addTo(map)
+                        .bindPopup(event.name)
+                        .openPopup();
+                    
+                    // Получаем адрес из URL параметра
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const userAddress = urlParams.get('address');
+                    
+                    const buildRouteBtn = document.getElementById('build-route-btn');
+                    const userAddressInput = document.getElementById('user-address-input');
+                    
+                    // Функция построения маршрута
+                    async function buildRoute(address) {
+                        if (!address) {
+                            return;
+                        }
+                        
+                        if (buildRouteBtn) {
+                            buildRouteBtn.disabled = true;
+                            buildRouteBtn.textContent = 'Построение...';
+                        }
+                        
+                        try {
+                            const userCoords = await getCoordinates(address);
+                            if (!userCoords) {
+                                console.error('Не удалось определить координаты адреса');
+                                if (buildRouteBtn) {
+                                    buildRouteBtn.disabled = false;
+                                    buildRouteBtn.textContent = 'Построить маршрут';
+                                }
+                                return;
+                            }
+                            
+                            if (userAddressInput) {
+                                userAddressInput.value = address;
+                            }
+                            
+                            // Добавить маркер пользователя
+                            const userMarker = L.marker([userCoords.lat, userCoords.lng])
+                                .addTo(map)
+                                .bindPopup('Ваше местоположение');
+                            
+                            // Построить маршрут через OSRM API
+                            const routeResponse = await fetch(
+                                `https://router.project-osrm.org/route/v1/driving/${userCoords.lng},${userCoords.lat};${event.coords.lng},${event.coords.lat}?overview=full&geometries=geojson`
+                            );
+                            const routeData = await routeResponse.json();
+                            
+                            if (routeData && routeData.routes && routeData.routes.length > 0) {
+                                const route = routeData.routes[0];
+                                const coordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                                
+                                L.polyline(coordinates, {
+                                    color: '#7A1030',
+                                    weight: 5,
+                                    opacity: 0.7
+                                }).addTo(map);
+                                
+                                // Показать расстояние и время
+                                const distance = (route.distance / 1000).toFixed(1);
+                                const duration = Math.round(route.duration / 60);
+                                
+                                // Подогнать карту под маршрут
+                                map.fitBounds(L.polyline(coordinates).getBounds(), { padding: [50, 50] });
+                            } else {
+                                console.error('Не удалось построить маршрут');
+                            }
+                        } catch (error) {
+                            console.error('Ошибка построения маршрута:', error);
+                        }
+                        
+                        if (buildRouteBtn) {
+                            buildRouteBtn.disabled = false;
+                            buildRouteBtn.textContent = 'Построить маршрут';
+                        }
+                    }
+                    
+                    // Если есть адрес в URL, строим маршрут автоматически
+                    if (userAddress) {
+                        await buildRoute(userAddress);
+                    }
+                    
+                    // Обработка кнопки построения маршрута
+                    if (buildRouteBtn && userAddressInput) {
+                        buildRouteBtn.addEventListener('click', async function() {
+                            const address = userAddressInput.value.trim();
+                            if (!address) {
+                                alert('Пожалуйста, введите ваш адрес');
+                                return;
+                            }
+                            await buildRoute(address);
+                        });
+                    }
+                }
+            }, 100);
+            
+            // Отображаем данные события
+            eventDetail.innerHTML = `
+                <h1>${event.name}</h1>
+                ${buildGalleryHTML(getEventImages(event))}
+                <p class="info"><strong>Тип события:</strong> ${getEventTypeName(event.type)}</p>
+                <p class="info"><strong>Адрес:</strong> ${event.address}</p>
+                <p class="info"><strong>Дата и время:</strong> ${formatDate(event.start_date, event.end_date)}</p>
+                <p class="price">${formatPrice(event.price)}</p>
+                
+                <div class="description">
+                    <h3>О событии</h3>
+                    <p>${event.description}</p>
+                </div>
+
+                <div class="map-container">
+                    <h3>Как добраться</h3>
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" id="user-address-input" placeholder="Ваш адрес" style="width: 300px; display: inline-block;">
+                        <button id="build-route-btn" class="btn-small" style="margin-left: 10px;">Построить маршрут</button>
+                    </div>
+                    <div id="map" style="width: 100%; height: 400px; background: var(--cream-100); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;">
+                        <p>Карта загружается...</p>
+                    </div>
+                </div>
+
+                <a href="#" class="btn-buy">Купить билет</a>
+            `;
+
+            initGalleryCarousel();
+        });
+    </script>
+</body>
+</html>

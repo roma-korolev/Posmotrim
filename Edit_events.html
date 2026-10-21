@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактирование событий (служебная страница) — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">← Вернуться к афише</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2>Редактирование событий</h2>
+
+            <div class="admin-note">
+                Это временная служебная страница для управления фотографиями событий. Она не добавлена в навигацию сайта
+                и не предназначена для конечных пользователей. Для каждого события можно указать
+                <strong>главное фото</strong> (отображается в афише и подборках) и <strong>фото для листалки</strong>
+                на странице самого события. Указывайте имя файла — файл должен лежать в папке
+                <code>images</code> в корне проекта. Расширение указывать не обязательно (например, можно написать
+                просто <code>event1</code> вместо <code>event1.jpg</code>) — оно будет подобрано автоматически.
+                Изменения хранятся только в этой вкладке браузера: чтобы сохранить их насовсем, скачайте
+                обновлённый <code>events.js</code> и замените им файл в проекте.
+            </div>
+
+            <div class="admin-toolbar">
+                <button id="download-js" class="btn-small">Скачать events.js</button>
+                <button id="download-json" class="btn-small">Скачать events.json</button>
+                <span id="admin-save-status"></span>
+            </div>
+
+            <div id="admin-events-list"></div>
+        </div>
+    </main>
+
+    <script>
+        // Убирает префикс "images/" для отображения в поле ввода
+        function filenameOnly(path) {
+            if (!path) return '';
+            return path.replace(/^images\//, '');
+        }
+
+        // Добавляет префикс "images/" для сохранения
+        function toImagePath(filename) {
+            const trimmed = (filename || '').trim();
+            return trimmed ? `images/${trimmed}` : '';
+        }
+
+        function galleryRowHTML(eventId, value, idx) {
+            const filename = filenameOnly(value);
+            return `
+                <div class="admin-gallery-row" data-idx="${idx}">
+                    <input type="text" class="gallery-photo-input" placeholder="Например: event1-2" value="${filename}">
+                    <div class="admin-photo-preview">${filename ? buildImgWithFallback(toImagePath(filename), '', 'clear') : ''}</div>
+                    <button type="button" class="admin-remove-photo" title="Удалить фото">×</button>
+                </div>`;
+        }
+
+        function adminEventCardHTML(event) {
+            const mainPhotoFilename = filenameOnly(event.photo);
+            const gallery = Array.isArray(event.gallery) ? event.gallery : [];
+
+            return `
+                <div class="admin-event" data-id="${event.id}">
+                    <div class="admin-event-header">
+                        <h3>${event.name}</h3>
+                        <span class="admin-event-meta">${getEventTypeName(event.type)} · ${event.address}</span>
+                    </div>
+
+                    <div class="admin-photo-section">
+                        <label>Главное фото (афиша, подборки, первое фото в листалке)</label>
+                        <div class="admin-photo-row">
+                            <input type="text" class="main-photo-input" placeholder="Например: event1" value="${mainPhotoFilename}">
+                            <div class="admin-photo-preview">${mainPhotoFilename ? buildImgWithFallback(toImagePath(mainPhotoFilename), '', 'clear') : ''}</div>
+                        </div>
+                        <p class="admin-photo-hint">Файл должен лежать в папке images. Расширение указывать не обязательно.</p>
+                    </div>
+
+                    <div class="admin-photo-section">
+                        <label>Фото для листалки на странице события (доп. к главному)</label>
+                        <div class="admin-gallery-list">
+                            ${gallery.map((g, i) => galleryRowHTML(event.id, g, i)).join('')}
+                        </div>
+                        <button type="button" class="btn-small admin-add-photo">+ Добавить фото</button>
+                    </div>
+
+                    <button type="button" class="btn-small admin-save">Сохранить событие</button>
+                    <span class="admin-save-status-inline"></span>
+                </div>`;
+        }
+
+        function renderAdminList() {
+            const list = document.getElementById('admin-events-list');
+            if (!events || events.length === 0) {
+                list.innerHTML = '<p>Событий пока нет.</p>';
+                return;
+            }
+            list.innerHTML = events.map(adminEventCardHTML).join('');
+        }
+
+        function attachPreview(input, previewEl) {
+            input.addEventListener('input', function() {
+                const filename = input.value.trim();
+                if (!filename) {
+                    previewEl.innerHTML = '';
+                    return;
+                }
+                previewEl.innerHTML = buildImgWithFallback(toImagePath(filename), '', 'clear');
+            });
+        }
+
+        function downloadFile(filename, content, mime) {
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function serializeEventsJS(eventsArr) {
+            return `// События (загружаются из файла)\nconst eventsData = ${JSON.stringify(eventsArr, null, 4)};\n`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderAdminList();
+
+            const list = document.getElementById('admin-events-list');
+            const saveStatus = document.getElementById('admin-save-status');
+
+            // Делегирование событий по всему списку
+            list.addEventListener('click', function(e) {
+                const card = e.target.closest('.admin-event');
+                if (!card) return;
+                const eventId = parseInt(card.dataset.id, 10);
+                const event = events.find(ev => ev.id === eventId);
+                if (!event) return;
+
+                // Добавить строку фото в галерею
+                if (e.target.classList.contains('admin-add-photo')) {
+                    const galleryList = card.querySelector('.admin-gallery-list');
+                    const idx = galleryList.children.length;
+                    galleryList.insertAdjacentHTML('beforeend', galleryRowHTML(eventId, '', idx));
+                    const newRow = galleryList.lastElementChild;
+                    attachPreview(newRow.querySelector('.gallery-photo-input'), newRow.querySelector('.admin-photo-preview'));
+                }
+
+                // Удалить строку фото из галереи
+                if (e.target.classList.contains('admin-remove-photo')) {
+                    e.target.closest('.admin-gallery-row').remove();
+                }
+
+                // Сохранить событие (в памяти вкладки)
+                if (e.target.classList.contains('admin-save')) {
+                    const mainPhotoFilename = card.querySelector('.main-photo-input').value.trim();
+                    event.photo = mainPhotoFilename ? toImagePath(mainPhotoFilename) : undefined;
+
+                    const galleryFilenames = Array.from(card.querySelectorAll('.gallery-photo-input'))
+                        .map(input => input.value.trim())
+                        .filter(Boolean);
+                    event.gallery = galleryFilenames.length > 0
+                        ? galleryFilenames.map(toImagePath)
+                        : undefined;
+
+                    const statusEl = e.target.nextElementSibling;
+                    statusEl.textContent = 'Сохранено ✓';
+                    setTimeout(() => { statusEl.textContent = ''; }, 2500);
+
+                    saveStatus.textContent = 'Не забудьте скачать events.js, чтобы сохранить изменения насовсем';
+                }
+            });
+
+            // Живой предпросмотр при вводе имени файла главного фото
+            list.querySelectorAll('.main-photo-input').forEach(input => {
+                attachPreview(input, input.closest('.admin-photo-row').querySelector('.admin-photo-preview'));
+            });
+            list.querySelectorAll('.gallery-photo-input').forEach(input => {
+                attachPreview(input, input.closest('.admin-gallery-row').querySelector('.admin-photo-preview'));
+            });
+
+            document.getElementById('download-js').addEventListener('click', function() {
+                downloadFile('events.js', serializeEventsJS(events), 'application/javascript');
+            });
+
+            document.getElementById('download-json').addEventListener('click', function() {
+                downloadFile('events.json', JSON.stringify(events), 'application/json');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Управление событиями — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+    <style>
+        /* ---------- Управление событиями (служебная страница) ---------- */
+        .adm .adm-lead{ max-width:760px; color:var(--ink-600); font-size:15px; line-height:1.55; margin:-12px 0 26px; }
+
+        /* подключение */
+        .adm-conn{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:14px; }
+        .adm-conn-card{ background:#fff; border:1px solid var(--line); border-radius:22px; padding:18px 22px; }
+        .adm-conn-card.ok{ border-color:rgba(46,125,80,.45); background:#F4FBF6; }
+        .adm-conn-card.need{ border-color:rgba(232,163,61,.8); background:#FFF9EE; }
+        .adm-conn-t{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-400); }
+        .adm-conn-n{ font-size:19px; font-weight:800; margin:4px 0 6px; }
+        .adm-conn-card p{ margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--ink-600); }
+        .adm-conn-dl{ font-size:13.5px; color:var(--ink-600); margin-bottom:26px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .adm-warn{ background:#FFF9EE; border:1px solid rgba(232,163,61,.8); border-radius:18px; padding:14px 20px; font-size:14px; line-height:1.5; margin-bottom:14px; color:var(--ink-900); }
+        .adm-banner{ background:var(--cream-100); border:1px solid var(--line); border-radius:18px; padding:14px 20px; margin-bottom:20px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; font-size:14px; }
+        .adm-banner[hidden]{ display:none; }
+
+        /* кнопки */
+        .adm-btn{ font:inherit; font-size:14px; font-weight:700; padding:9px 18px; border-radius:var(--radius-pill); border:1px solid var(--ink-900); background:var(--ink-900); color:#fff; cursor:pointer; transition:background .2s, transform .15s; white-space:nowrap; }
+        .adm-btn:hover{ background:#000; transform:translateY(-1px); }
+        .adm-btn--main{ background:var(--maroon-700); border-color:var(--maroon-700); }
+        .adm-btn--main:hover{ background:var(--maroon-600); }
+        .adm-btn--ghost{ background:transparent; color:var(--ink-900); border-color:var(--line); }
+        .adm-btn--ghost:hover{ background:var(--cream-100); }
+        .adm-btn--danger{ background:transparent; color:var(--maroon-700); border-color:rgba(122,16,48,.35); }
+        .adm-btn--danger:hover{ background:#FBE9EE; }
+        .adm-btn--icon{ padding:7px 11px; min-width:36px; }
+        .adm-btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+
+        /* панель инструментов */
+        .adm-toolbar{ display:grid; grid-template-columns:minmax(200px,1.6fr) 1fr 1fr 1fr auto; gap:12px; margin-bottom:12px; align-items:center; }
+        .adm .adm-toolbar input, .adm .adm-toolbar select{ width:100%; }
+        .adm-count{ font-size:13.5px; color:var(--ink-400); margin:0 4px 16px; }
+
+        /* поля */
+        .adm input[type=text], .adm input[type=number], .adm input[type=datetime-local], .adm input:not([type]), .adm select, .adm textarea{
+            width:100%; font:inherit; font-size:15px; padding:10px 14px; border:1px solid var(--line);
+            border-radius:14px; background:#fff; color:var(--ink-900);
+        }
+        .adm textarea{ resize:vertical; line-height:1.5; }
+        .adm input:focus, .adm select:focus, .adm textarea:focus{ outline:2px solid rgba(122,16,48,.35); outline-offset:1px; }
+
+        /* карточка события */
+        #adm-list{ display:flex; flex-direction:column; gap:14px; }
+        .adm-ev{ background:#fff; border:1px solid var(--line); border-radius:24px; overflow:hidden; transition:box-shadow .2s; }
+        .adm-ev.is-open{ box-shadow:var(--shadow-card); }
+        .adm-ev.is-draft{ border-style:dashed; border-color:rgba(232,163,61,.9); }
+        .adm-head{ display:grid; grid-template-columns:92px 1fr auto; gap:18px; padding:14px 20px 14px 14px; cursor:pointer; align-items:center; }
+        .adm-head:hover .adm-caret{ background:var(--cream-100); }
+        .adm-thumb{ position:relative; width:92px; height:92px; border-radius:18px; overflow:hidden; background:var(--cream-100); flex-shrink:0; }
+        .adm-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; margin:0; border-radius:0; }
+        .adm-ph{ position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Crect x='3' y='5' width='18' height='14' rx='2' stroke='%237A1030' stroke-width='1.4'/%3E%3Ccircle cx='8.5' cy='10' r='1.5' fill='%237A1030'/%3E%3Cpath d='M21 15l-5.5-5.5L7 18' stroke='%237A1030' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/36px no-repeat; opacity:.55; }
+        .adm-main{ min-width:0; }
+        .adm-title{ font-size:18px; font-weight:800; letter-spacing:-.01em; display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
+        .adm-muted{ color:var(--ink-400); font-weight:600; }
+        .adm-meta{ font-size:14px; color:var(--ink-600); margin-top:3px; }
+        .adm-addr{ font-size:13.5px; color:var(--ink-400); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .adm-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+        .adm-chip{ font:inherit; font-size:12.5px; font-weight:700; padding:5px 12px; border-radius:var(--radius-pill); border:1px solid var(--line); background:#fff; color:var(--ink-600); cursor:pointer; transition:all .15s; }
+        .adm-chip:hover{ border-color:var(--maroon-700); color:var(--maroon-700); }
+        .adm-chip.on{ background:var(--maroon-700); border-color:var(--maroon-700); color:#fff; }
+        .adm-caret{ font-size:13.5px; font-weight:700; padding:8px 16px; border-radius:var(--radius-pill); border:1px solid var(--line); color:var(--ink-900); white-space:nowrap; }
+        .adm-badge{ font-size:11.5px; font-weight:800; padding:3px 10px; border-radius:var(--radius-pill); background:var(--cream-100); color:var(--ink-600); }
+        .adm-badge--draft{ background:#FFF1D6; color:#8A5A00; }
+        .adm-badge--warn{ background:#FBE9EE; color:var(--maroon-700); }
+
+        /* форма */
+        .adm-body{ border-top:1px solid var(--line); padding:24px 26px 26px; background:var(--cream-50); }
+        .adm-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px 20px; }
+        .adm-f{ display:flex; flex-direction:column; gap:6px; font-size:13px; font-weight:700; color:var(--ink-600); min-width:0; }
+        .adm-f small{ font-weight:500; color:var(--ink-400); }
+        .adm-f--full{ grid-column:1 / -1; }
+        .adm-row{ display:flex; gap:10px; align-items:center; }
+        .adm-row > input{ flex:1; min-width:0; }
+        .adm-hint{ font-size:12.5px; color:var(--ink-400); font-weight:500; }
+        .adm-hint a{ color:var(--maroon-700); text-decoration:underline; }
+
+        .adm-photos{ margin-top:26px; padding-top:22px; border-top:1px solid var(--line); }
+        .adm-sub{ font-size:14px; font-weight:800; color:var(--ink-900); margin:16px 0 10px; }
+        .adm-sub:first-child{ margin-top:0; }
+        .adm-sub small{ font-weight:500; color:var(--ink-400); margin-left:6px; }
+        .adm-photo-row{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+        .adm-photo-row .adm-thumb{ width:64px; height:64px; border-radius:14px; }
+        .adm-photo-row > input{ flex:1; min-width:0; }
+        .adm-foot{ margin-top:28px; padding-top:20px; border-top:1px solid var(--line); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+        .adm-foot .adm-sp{ flex:1; }
+
+        /* плавающие уведомления */
+        .adm-float{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; align-items:center; gap:10px; pointer-events:none; width:max-content; max-width:calc(100vw - 24px); }
+        .adm-status, .adm-toast{ pointer-events:auto; font-size:14px; font-weight:700; padding:10px 20px; border-radius:var(--radius-pill); background:var(--ink-900); color:#fff; box-shadow:0 10px 30px -10px rgba(0,0,0,.5); }
+        .adm-status[hidden], .adm-toast[hidden]{ display:none; }
+        .adm-status.ok{ background:#1F6B3F; }
+        .adm-status.warn{ background:var(--gold-300); color:var(--ink-900); }
+        .adm-status.err, .adm-toast.err{ background:var(--maroon-700); }
+        .adm-status.busy{ background:var(--ink-600); }
+        .adm-toast button{ font:inherit; font-weight:800; background:none; border:0; color:var(--gold-300); cursor:pointer; margin-left:12px; text-decoration:underline; }
+
+        @media (max-width:900px){
+            .adm-toolbar{ grid-template-columns:1fr 1fr; }
+            .adm-toolbar input{ grid-column:1 / -1; }
+            .adm-toolbar .adm-btn{ grid-column:1 / -1; }
+        }
+        @media (max-width:700px){
+            .adm-conn{ grid-template-columns:1fr; }
+            .adm-head{ grid-template-columns:64px 1fr; gap:12px; padding:12px; }
+            .adm-thumb{ width:64px; height:64px; border-radius:14px; }
+            .adm-caret{ grid-column:1 / -1; text-align:center; }
+            .adm-body{ padding:18px 14px 20px; }
+            .adm-grid{ grid-template-columns:1fr; }
+            .adm-photo-row{ flex-wrap:wrap; }
+            .adm-photo-row > input{ flex-basis:calc(100% - 80px); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">← Вернуться к афише</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container adm">
+            <h2>Управление событиями</h2>
+            <p class="adm-lead">
+                Служебная страница: здесь можно редактировать любые параметры событий, менять фото, раскладывать события по подборкам
+                и удалять их. Все изменения сразу записываются в файл с данными — после подключения файла ничего скачивать и заменять вручную не нужно.
+            </p>
+
+            <section id="adm-conn"></section>
+            <div id="adm-banner" class="adm-banner" hidden></div>
+
+            <div class="adm-toolbar">
+                <input type="text" id="f-q" placeholder="Поиск по названию, адресу, описанию">
+                <select id="f-type"></select>
+                <select id="f-col"></select>
+                <select id="f-sort">
+                    <option value="date-asc">Сначала ближайшие</option>
+                    <option value="date-desc">Сначала поздние</option>
+                    <option value="name">По названию</option>
+                    <option value="new">Сначала добавленные</option>
+                </select>
+                <button type="button" class="adm-btn adm-btn--main" data-act="new">+ Новое событие</button>
+            </div>
+            <div class="adm-count" id="adm-count"></div>
+
+            <div id="adm-list"></div>
+        </div>
+    </main>
+
+    <input type="file" id="adm-file" accept="image/*" multiple hidden>
+    <div class="adm-float">
+        <div class="adm-toast" id="adm-toast" hidden></div>
+        <div class="adm-status" id="adm-status" hidden></div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ============================================================
+        // Константы и состояние
+        // ============================================================
+        const TYPES = { 'theater': 'Театр', 'cinema': 'Кино', 'lecture': 'Лекция', 'exhibition': 'Выставка', 'public-talk': 'Паблик-ток', 'other': 'Другое' };
+        const COLS = (typeof collections !== 'undefined' && Array.isArray(collections)) ? collections : [];
+        const IMG_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        const HAS_FS = 'showOpenFilePicker' in window && 'showDirectoryPicker' in window;
+        const DRAFT_KEY = 'posmotrim_admin_draft_v1';
+        const KEY_ORDER = ['id', 'name', 'type', 'address', 'coords', 'start_date', 'end_date', 'price', 'description', 'collections', 'photo', 'gallery'];
+
+        let store = [];                 // все события (рабочая копия)
+        let drafts = new Set();         // id новых событий, заполненных не до конца (в файл не пишутся)
+        let fileHandle = null;          // подключённый events.js / events.json
+        let pendingFile = null;         // сохранённый ранее файл, нужно подтвердить доступ
+        let imagesDir = null;           // подключённая папка images
+        let pendingDir = null;
+        let dirty = false;              // есть изменения, которых нет в файле
+        let saving = false, again = false, saveTimer = null;
+        let uploadTarget = null;
+        const open = new Set();         // id раскрытых карточек
+        const blobs = {};               // путь -> blob-URL загруженных в этой сессии фото
+        const filters = { q: '', type: '', col: '', sort: 'date-asc' };
+
+        const $ = (s, r = document) => r.querySelector(s);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        const clone = x => JSON.parse(JSON.stringify(x));
+        const byId = id => store.find(e => String(e.id) === String(id));
+
+        // ============================================================
+        // IndexedDB: запоминаем выбранные файл и папку между сессиями
+        // ============================================================
+        function idb() {
+            return new Promise((res, rej) => {
+                const r = indexedDB.open('posmotrim-admin', 1);
+                r.onupgradeneeded = () => r.result.createObjectStore('h');
+                r.onsuccess = () => res(r.result);
+                r.onerror = () => rej(r.error);
+            });
+        }
+        async function idbGet(k) {
+            try {
+                const db = await idb();
+                return await new Promise((res, rej) => {
+                    const q = db.transaction('h').objectStore('h').get(k);
+                    q.onsuccess = () => res(q.result);
+                    q.onerror = () => rej(q.error);
+                });
+            } catch (e) { return undefined; }
+        }
+        async function idbSet(k, v) {
+            try {
+                const db = await idb();
+                await new Promise((res, rej) => {
+                    const t = db.transaction('h', 'readwrite');
+                    t.objectStore('h').put(v, k);
+                    t.oncomplete = res;
+                    t.onerror = () => rej(t.error);
+                });
+            } catch (e) { /* не критично */ }
+        }
+
+        // ============================================================
+        // Данные: нормализация, проверка, сериализация
+        // ============================================================
+        function toNum(x) {
+            if (x === '' || x === null || x === undefined) return null;
+            const n = Number(x);
+            return isFinite(n) ? n : null;
+        }
+
+        // Приводит событие к виду, в котором оно лежит в events.js (порядок ключей как у add-event.html)
+        function clean(ev) {
+            const o = {
+                id: ev.id,
+                name: ev.name || '',
+                type: ev.type || 'other',
+                address: ev.address || '',
+                coords: { lat: toNum(ev.coords && ev.coords.lat), lng: toNum(ev.coords && ev.coords.lng) },
+                start_date: ev.start_date || '',
+                end_date: ev.end_date || null,
+                price: Math.max(0, toNum(ev.price) || 0),
+                description: ev.description || ''
+            };
+            if (ev.collections && ev.collections.length) o.collections = ev.collections.slice();
+            if (ev.photo) o.photo = ev.photo;
+            const g = (ev.gallery || []).filter(Boolean);
+            if (g.length) o.gallery = g;
+            // неизвестные поля, если они когда-нибудь появятся, не теряем
+            Object.keys(ev).forEach(k => { if (KEY_ORDER.indexOf(k) === -1 && ev[k] !== undefined) o[k] = ev[k]; });
+            return o;
+        }
+
+        function missing(ev) {
+            const m = [];
+            if (!String(ev.name || '').trim()) m.push('название');
+            if (!String(ev.address || '').trim()) m.push('адрес');
+            if (toNum(ev.coords && ev.coords.lat) === null || toNum(ev.coords && ev.coords.lng) === null) m.push('координаты');
+            if (!ev.start_date) m.push('дата начала');
+            if (!String(ev.description || '').trim()) m.push('описание');
+            return m;
+        }
+
+        function serialize(kind) {
+            const arr = store.filter(e => !drafts.has(e.id)).map(clean);
+            if (kind === 'json') return JSON.stringify(arr);
+            return '// События (загружаются из файла)\nconst eventsData = ' + JSON.stringify(arr, null, 4) + ';\n';
+        }
+
+        function parseEventsJS(text) {
+            const t = text.trim();
+            if (!t) return [];
+            const i = t.indexOf('['), j = t.lastIndexOf(']');
+            if (i < 0 || j < i) throw new Error('в файле не найден список событий');
+            const arr = JSON.parse(t.slice(i, j + 1));
+            if (!Array.isArray(arr)) throw new Error('это не список событий');
+            return arr;
+        }
+
+        // ============================================================
+        // Статус и уведомления
+        // ============================================================
+        function setStatus(text, kind) {
+            const el = $('#adm-status');
+            el.textContent = text || '';
+            el.className = 'adm-status ' + (kind || '');
+            el.hidden = !text;
+        }
+        let toastTimer = null;
+        function toast(msg, kind, action) {
+            const el = $('#adm-toast');
+            el.className = 'adm-toast ' + (kind || '');
+            el.textContent = msg;
+            if (action) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = action.label;
+                b.addEventListener('click', () => { el.hidden = true; action.fn(); });
+                el.appendChild(b);
+            }
+            el.hidden = false;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { el.hidden = true; }, action ? 10000 : 5000);
+        }
+        const nowTime = () => new Date().toLocaleTimeString('ru-RU');
+
+        // ============================================================
+        // Автосохранение в файл
+        // ============================================================
+        function saveDraft() {
+            try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ts: Date.now(), events: store, drafts: Array.from(drafts) })); } catch (e) { /* ignore */ }
+        }
+        function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ } }
+
+        function touch(ev) {
+            if (ev && drafts.has(ev.id) && missing(ev).length === 0) drafts.delete(ev.id);
+            dirty = true;
+            updateCount();
+            clearTimeout(saveTimer);
+            if (fileHandle) {
+                setStatus('Сохранение…', 'busy');
+                saveTimer = setTimeout(flush, 450);
+            } else {
+                saveDraft();
+                setStatus(HAS_FS ? 'Файл не подключён — изменения пока только в этой вкладке' : 'Изменения только в этой вкладке — скачайте events.js', 'warn');
+            }
+        }
+
+        async function flush() {
+            if (!fileHandle) return;
+            if (saving) { again = true; return; }
+            saving = true;
+            try {
+                const w = await fileHandle.createWritable();
+                await w.write(serialize(/\.json$/i.test(fileHandle.name) ? 'json' : 'js'));
+                await w.close();
+                dirty = false;
+                clearDraft();
+                const hidden = drafts.size ? ` · черновиков не в файле: ${drafts.size}` : '';
+                setStatus('Записано в ' + fileHandle.name + ' · ' + nowTime() + hidden, 'ok');
+            } catch (e) {
+                setStatus('Ошибка записи: ' + e.message, 'err');
+            }
+            saving = false;
+            if (again) { again = false; flush(); }
+        }
+
+        window.addEventListener('beforeunload', e => {
+            if (dirty || drafts.size || saving) { e.preventDefault(); e.returnValue = ''; }
+        });
+
+        // ============================================================
+        // Подключение файла данных и папки изображений
+        // ============================================================
+        async function connectFile() {
+            let h;
+            try {
+                [h] = await window.showOpenFilePicker({
+                    multiple: false,
+                    types: [{ description: 'Файл данных (events.js или events.json)', accept: { 'text/javascript': ['.js'], 'application/json': ['.json'] } }]
+                });
+            } catch (e) { return; }
+            if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') { toast('Без доступа на запись автосохранение невозможно', 'err'); return; }
+            await attachFile(h);
+        }
+
+        async function attachFile(h) {
+            let arr;
+            try { arr = parseEventsJS(await (await h.getFile()).text()); }
+            catch (e) { toast('Не удалось прочитать ' + h.name + ': ' + e.message, 'err'); return; }
+
+            let useMemory = false;
+            if (dirty && !fileHandle) {
+                useMemory = confirm('В этой вкладке есть изменения, которых нет в файле.\n\nОК — записать их в файл (его содержимое будет заменено).\nОтмена — загрузить данные из файла (изменения во вкладке пропадут).');
+            }
+            fileHandle = h;
+            pendingFile = null;
+            await idbSet('file', h);
+            if (useMemory) {
+                await flush();
+            } else {
+                store = arr;
+                drafts = new Set();
+                dirty = false;
+                clearDraft();
+                setStatus('Подключено: ' + h.name + ' · событий: ' + arr.length, 'ok');
+            }
+            $('#adm-banner').hidden = true;
+            renderConn();
+            renderList();
+        }
+
+        async function resumeFile() {
+            try {
+                if ((await pendingFile.requestPermission({ mode: 'readwrite' })) !== 'granted') { toast('Нужно разрешить доступ к файлу', 'err'); return; }
+                await attachFile(pendingFile);
+            } catch (e) { toast('Не удалось восстановить доступ — подключите файл заново', 'err'); pendingFile = null; renderConn(); }
+        }
+
+        async function connectImages() {
+            let d;
+            try { d = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { return; }
+            if (d.name.toLowerCase() !== 'images' && !confirm('Выбрана папка «' + d.name + '», а не «images».\nНа сайте фото берутся из папки images — продолжить с этой папкой?')) return;
+            imagesDir = d; pendingDir = null;
+            await idbSet('dir', d);
+            toast('Папка «' + d.name + '» подключена — можно загружать фото', '');
+            renderConn(); renderList();
+        }
+
+        async function resumeImages() {
+            try {
+                if ((await pendingDir.requestPermission({ mode: 'readwrite' })) !== 'granted') return;
+                imagesDir = pendingDir; pendingDir = null;
+                renderConn(); renderList();
+            } catch (e) { pendingDir = null; renderConn(); }
+        }
+
+        function renderConn() {
+            const el = $('#adm-conn');
+            const dl = `<div class="adm-conn-dl">Резервный вариант:
+                <button type="button" class="adm-btn adm-btn--ghost" data-act="dl-js">Скачать events.js</button>
+                <button type="button" class="adm-btn adm-btn--ghost" data-act="dl-json">Скачать events.json</button></div>`;
+            if (!HAS_FS) {
+                el.innerHTML = `<div class="adm-warn"><b>Автосохранение недоступно в этом браузере.</b> Прямую запись в файлы умеют Chrome, Edge и Opera на компьютере.
+                    Здесь изменения хранятся в этой вкладке: скачивайте обновлённый events.js и заменяйте им файл в проекте. Загрузка фото тоже недоступна — кладите файлы в папку images вручную и вписывайте их имена.</div>` + dl;
+                return;
+            }
+            let fileCard;
+            if (fileHandle) {
+                fileCard = `<div class="adm-conn-card ok"><div class="adm-conn-t">Файл данных</div><div class="adm-conn-n">${esc(fileHandle.name)}</div>
+                    <p>Автосохранение включено: любое изменение сразу записывается в файл.</p>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="connect-file">Выбрать другой файл</button></div>`;
+            } else if (pendingFile) {
+                fileCard = `<div class="adm-conn-card need"><div class="adm-conn-t">Файл данных</div><div class="adm-conn-n">${esc(pendingFile.name)}</div>
+                    <p>Браузер просит подтвердить доступ к файлу, который вы подключали раньше.</p>
+                    <button type="button" class="adm-btn adm-btn--main" data-act="resume-file">Продолжить с этим файлом</button>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="connect-file">Выбрать другой</button></div>`;
+            } else {
+                fileCard = `<div class="adm-conn-card need"><div class="adm-conn-t">Файл данных</div><div class="adm-conn-n">Не подключён</div>
+                    <p>Выберите <b>events.js</b> из папки проекта — дальше все изменения будут записываться в него автоматически.</p>
+                    <button type="button" class="adm-btn adm-btn--main" data-act="connect-file">Подключить events.js</button></div>`;
+            }
+            let imgCard;
+            if (imagesDir) {
+                imgCard = `<div class="adm-conn-card ok"><div class="adm-conn-t">Папка с фото</div><div class="adm-conn-n">${esc(imagesDir.name)}</div>
+                    <p>Загруженные фото сохраняются прямо в эту папку, а в событие записывается путь <code>images/имя-файла</code>.</p>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="connect-images">Выбрать другую папку</button></div>`;
+            } else if (pendingDir) {
+                imgCard = `<div class="adm-conn-card need"><div class="adm-conn-t">Папка с фото</div><div class="adm-conn-n">${esc(pendingDir.name)}</div>
+                    <p>Подтвердите доступ к папке, которую подключали раньше.</p>
+                    <button type="button" class="adm-btn adm-btn--main" data-act="resume-images">Продолжить с этой папкой</button>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="connect-images">Выбрать другую</button></div>`;
+            } else {
+                imgCard = `<div class="adm-conn-card"><div class="adm-conn-t">Папка с фото</div><div class="adm-conn-n">Не подключена</div>
+                    <p>Нужна только для загрузки новых фото. Выберите папку <b>images</b> в проекте. Без неё можно вписывать имена файлов вручную.</p>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="connect-images">Подключить папку images</button></div>`;
+            }
+            el.innerHTML = `<div class="adm-conn">${fileCard}${imgCard}</div>` + dl;
+        }
+
+        function download(name, text, mime) {
+            const url = URL.createObjectURL(new Blob([text], { type: mime }));
+            const a = document.createElement('a');
+            a.href = url; a.download = name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // ============================================================
+        // Фото
+        // ============================================================
+        const stripImg = p => String(p || '').replace(/^images\//, '');
+        const toPath = n => { n = String(n || '').trim(); return n ? (/^images\//.test(n) ? n : 'images/' + n) : ''; };
+
+        function imgCandidates(path) {
+            return /\.[a-zA-Z0-9]+$/.test(path) ? [path] : IMG_EXT.map(e => path + '.' + e);
+        }
+        function photoHTML(path) {
+            if (!path) return '<span class="adm-ph"></span>';
+            if (blobs[path]) return '<span class="adm-ph"></span><img src="' + blobs[path] + '" alt="">';
+            const c = imgCandidates(path);
+            return '<span class="adm-ph"></span><img src="' + esc(c[0]) + '" data-c="' + esc(c.slice(1).join('|')) + '" alt="">';
+        }
+        // перебор расширений, как на сайте; если файла нет — остаётся иконка-заглушка
+        document.addEventListener('error', e => {
+            const img = e.target;
+            if (!(img instanceof HTMLImageElement) || !img.closest('.adm')) return;
+            const rest = (img.dataset.c || '').split('|').filter(Boolean);
+            if (rest.length) { img.dataset.c = rest.slice(1).join('|'); img.src = rest[0]; }
+            else img.remove();
+        }, true);
+
+        async function saveImage(file) {
+            const names = [];
+            for await (const [n] of imagesDir.entries()) names.push(n.toLowerCase());
+            const bases = new Set(names.map(n => n.replace(/\.[^.]+$/, '')));
+            const m = file.name.match(/^(.*?)(\.[^.]*)?$/);
+            const base = m[1].trim().replace(/\s+/g, '-').replace(/[^\p{L}\p{N}_-]/gu, '') || 'photo';
+            const ext = (m[2] || '.jpg').toLowerCase();
+            let b = base, i = 2;
+            while (bases.has(b.toLowerCase())) b = base + '-' + (i++);
+            const name = b + ext;
+            const fh = await imagesDir.getFileHandle(name, { create: true });
+            const w = await fh.createWritable();
+            await w.write(file);
+            await w.close();
+            blobs['images/' + name] = URL.createObjectURL(file);
+            return name;
+        }
+
+        async function onFilesChosen(files) {
+            const t = uploadTarget; uploadTarget = null;
+            const ev = t && byId(t.id);
+            if (!ev || !files.length) return;
+            setStatus('Загрузка фото…', 'busy');
+            try {
+                for (const f of Array.from(files)) {
+                    const path = 'images/' + await saveImage(f);
+                    if (t.slot === 'main') {
+                        if (!ev.photo) ev.photo = path;
+                        else { ev.gallery = ev.gallery || []; ev.gallery.push(path); }
+                        // главное фото — только одно: берём первый файл, остальные идут в листалку
+                        t.slot = 'gallery';
+                    } else {
+                        ev.gallery = ev.gallery || [];
+                        ev.gallery.push(path);
+                    }
+                }
+                refreshPhotos(ev);
+                refreshThumb(ev);
+                touch(ev);
+            } catch (e) {
+                setStatus('Не удалось сохранить фото: ' + e.message, 'err');
+            }
+        }
+
+        // ============================================================
+        // Рендер списка
+        // ============================================================
+        function fmtDate(s) {
+            const d = new Date(s);
+            return isNaN(d) ? '' : d.toLocaleString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        function isPast(ev) {
+            const t = new Date(ev.end_date || ev.start_date).getTime();
+            return !isNaN(t) && t < Date.now();
+        }
+
+        function titleHTML(ev) {
+            const name = String(ev.name || '').trim();
+            let h = name ? esc(name) : '<span class="adm-muted">Без названия</span>';
+            if (drafts.has(ev.id)) h += ` <span class="adm-badge adm-badge--draft">Черновик · не записан в файл (не хватает: ${esc(missing(ev).join(', '))})</span>`;
+            else { const m = missing(ev); if (m.length) h += ` <span class="adm-badge adm-badge--warn">Не заполнено: ${esc(m.join(', '))}</span>`; }
+            if (!drafts.has(ev.id) && isPast(ev)) h += ' <span class="adm-badge">Прошло</span>';
+            return h;
+        }
+        function metaHTML(ev) {
+            const parts = [TYPES[ev.type] || 'Другое'];
+            const s = fmtDate(ev.start_date);
+            if (s) parts.push(s + (ev.end_date && fmtDate(ev.end_date) ? ' — ' + fmtDate(ev.end_date) : ''));
+            parts.push(Number(ev.price) > 0 ? 'от ' + ev.price + ' ₽' : 'Бесплатно');
+            return esc(parts.join(' · '));
+        }
+        function chipsHTML(ev) {
+            if (!COLS.length) return '';
+            const own = ev.collections || [];
+            return COLS.map(c => `<button type="button" class="adm-chip${own.includes(c.id) ? ' on' : ''}" data-act="col" data-col="${esc(c.id)}" title="${own.includes(c.id) ? 'Убрать из подборки' : 'Добавить в подборку'}">${esc(c.name)}</button>`).join('');
+        }
+
+        function cardHTML(ev) {
+            const isOpen = open.has(ev.id);
+            return `<article class="adm-ev${isOpen ? ' is-open' : ''}${drafts.has(ev.id) ? ' is-draft' : ''}" data-id="${ev.id}">
+                <div class="adm-head" data-act="toggle">
+                    <div class="adm-thumb" data-role="thumb">${photoHTML(ev.photo)}</div>
+                    <div class="adm-main">
+                        <div class="adm-title" data-role="title">${titleHTML(ev)}</div>
+                        <div class="adm-meta" data-role="meta">${metaHTML(ev)}</div>
+                        <div class="adm-addr" data-role="addr">${esc(ev.address)}</div>
+                        <div class="adm-chips" data-role="chips">${chipsHTML(ev)}</div>
+                    </div>
+                    <div class="adm-caret">${isOpen ? 'Свернуть ▲' : 'Изменить ▼'}</div>
+                </div>
+                ${isOpen ? '<div class="adm-body">' + formHTML(ev) + '</div>' : ''}
+            </article>`;
+        }
+
+        function formHTML(ev) {
+            const c = ev.coords || {};
+            const typeOpts = Object.keys(TYPES).map(k => `<option value="${k}"${ev.type === k ? ' selected' : ''}>${TYPES[k]}</option>`).join('');
+            const map = (toNum(c.lat) !== null && toNum(c.lng) !== null)
+                ? `<a href="https://www.openstreetmap.org/?mlat=${c.lat}&mlon=${c.lng}#map=17/${c.lat}/${c.lng}" target="_blank" rel="noopener">Проверить точку на карте</a>` : 'Координаты нужны для карты и расчёта расстояния';
+            return `<div class="adm-grid">
+                <label class="adm-f adm-f--full">Название *<input type="text" data-f="name" value="${esc(ev.name)}"></label>
+                <label class="adm-f">Тип *<select data-f="type">${typeOpts}</select></label>
+                <label class="adm-f">Цена, ₽ <small>0 — бесплатно</small><input type="number" min="0" step="1" data-f="price" value="${esc(ev.price == null ? 0 : ev.price)}"></label>
+                <label class="adm-f">Дата и время начала *<input type="datetime-local" data-f="start_date" value="${esc(ev.start_date)}"></label>
+                <label class="adm-f">Дата и время окончания<input type="datetime-local" data-f="end_date" value="${esc(ev.end_date || '')}"></label>
+                <div class="adm-f adm-f--full"><span>Адрес *</span>
+                    <div class="adm-row"><input type="text" data-f="address" value="${esc(ev.address)}" placeholder="Например: Москва, Тверская ул., 1">
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="geocode">Найти координаты</button></div></div>
+                <label class="adm-f">Широта (lat) *<input type="number" step="any" data-f="lat" value="${c.lat == null ? '' : c.lat}"></label>
+                <label class="adm-f">Долгота (lng) *<input type="number" step="any" data-f="lng" value="${c.lng == null ? '' : c.lng}"></label>
+                <div class="adm-f adm-f--full adm-hint" data-role="maplink" style="margin-top:-6px">${map}</div>
+                <label class="adm-f adm-f--full">Описание *<textarea rows="6" data-f="description">${esc(ev.description)}</textarea></label>
+            </div>
+            ${photosHTML(ev)}
+            <div class="adm-foot">
+                <button type="button" class="adm-btn adm-btn--ghost" data-act="dup">Дублировать</button>
+                ${drafts.has(ev.id) ? '' : `<a class="adm-btn adm-btn--ghost" href="event.html?id=${ev.id}" target="_blank" rel="noopener">Открыть на сайте</a>`}
+                <span class="adm-sp"></span>
+                <button type="button" class="adm-btn adm-btn--danger" data-act="del">Удалить событие</button>
+            </div>`;
+        }
+
+        function photosHTML(ev) {
+            const g = ev.gallery || [];
+            const up = imagesDir ? '' : ' title="Сначала подключите папку images (вверху страницы)"';
+            const upDis = HAS_FS ? '' : ' disabled';
+            return `<div class="adm-photos">
+                <div class="adm-sub">Главное фото <small>афиша, подборки и первое фото в листалке</small></div>
+                <div class="adm-photo-row">
+                    <div class="adm-thumb" data-role="mainprev">${photoHTML(ev.photo)}</div>
+                    <input type="text" data-f="photo" placeholder="имя файла, например img1 или img1.jpg" value="${esc(stripImg(ev.photo))}">
+                    <button type="button" class="adm-btn" data-act="upload" data-slot="main"${up}${upDis}>Загрузить</button>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="clear-main"${ev.photo ? '' : ' disabled'}>Убрать</button>
+                </div>
+                <div class="adm-sub">Фото для листалки <small>показываются на странице события вместе с главным</small></div>
+                ${g.map((p, i) => `<div class="adm-photo-row" data-i="${i}">
+                    <div class="adm-thumb">${photoHTML(p)}</div>
+                    <input type="text" data-f="gallery" data-i="${i}" placeholder="имя файла" value="${esc(stripImg(p))}">
+                    <button type="button" class="adm-btn adm-btn--ghost adm-btn--icon" data-act="g-up" data-i="${i}" title="Выше"${i === 0 ? ' disabled' : ''}>↑</button>
+                    <button type="button" class="adm-btn adm-btn--ghost adm-btn--icon" data-act="g-down" data-i="${i}" title="Ниже"${i === g.length - 1 ? ' disabled' : ''}>↓</button>
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="g-main" data-i="${i}" title="Сделать главным фото">★ Главное</button>
+                    <button type="button" class="adm-btn adm-btn--danger adm-btn--icon" data-act="g-del" data-i="${i}" title="Убрать из листалки">×</button>
+                </div>`).join('')}
+                <div class="adm-row" style="flex-wrap:wrap">
+                    <button type="button" class="adm-btn adm-btn--ghost" data-act="g-add">+ Добавить по имени</button>
+                    <button type="button" class="adm-btn" data-act="upload" data-slot="gallery"${up}${upDis}>+ Загрузить файлы</button>
+                </div>
+                <div class="adm-hint" style="margin-top:8px">Файлы лежат в папке <code>images</code>. Расширение можно не указывать — сайт подберёт его сам.</div>
+            </div>`;
+        }
+
+        // ----- точечные обновления (чтобы не сбивать фокус при вводе) -----
+        const cardEl = ev => $('.adm-ev[data-id="' + ev.id + '"]');
+        function refreshText(ev) {
+            const c = cardEl(ev); if (!c) return;
+            $('[data-role=title]', c).innerHTML = titleHTML(ev);
+            $('[data-role=meta]', c).innerHTML = metaHTML(ev);
+            $('[data-role=addr]', c).textContent = ev.address || '';
+            c.classList.toggle('is-draft', drafts.has(ev.id));
+        }
+        function refreshChips(ev) { const c = cardEl(ev); if (c) $('[data-role=chips]', c).innerHTML = chipsHTML(ev); }
+        function refreshThumb(ev) {
+            const c = cardEl(ev); if (!c) return;
+            $('[data-role=thumb]', c).innerHTML = photoHTML(ev.photo);
+            const mp = $('[data-role=mainprev]', c); if (mp) mp.innerHTML = photoHTML(ev.photo);
+        }
+        function refreshPhotos(ev) {
+            const c = cardEl(ev); if (!c) return;
+            const box = $('.adm-photos', c);
+            if (box) box.outerHTML = photosHTML(ev);
+        }
+        function refreshCard(ev) {
+            const c = cardEl(ev); if (c) c.outerHTML = cardHTML(ev);
+        }
+        const thumbTimers = {};
+        function refreshThumbSoon(ev) {
+            clearTimeout(thumbTimers[ev.id]);
+            thumbTimers[ev.id] = setTimeout(() => {
+                refreshThumb(ev);
+                const c = cardEl(ev);
+                if (c) { const g = c.querySelectorAll('.adm-photo-row[data-i] .adm-thumb'); g.forEach((el, i) => { el.innerHTML = photoHTML((ev.gallery || [])[i]); }); }
+            }, 450);
+        }
+
+        function visible() {
+            const q = filters.q.trim().toLowerCase();
+            const list = store.filter(e => {
+                if (filters.type && e.type !== filters.type) return false;
+                if (filters.col === '__none') { if (e.collections && e.collections.length) return false; }
+                else if (filters.col && !(e.collections || []).includes(filters.col)) return false;
+                if (q && !(String(e.name || '') + ' ' + String(e.address || '') + ' ' + String(e.description || '')).toLowerCase().includes(q)) return false;
+                return true;
+            });
+            const cmp = {
+                'date-asc': (a, b) => (a.start_date || '9999').localeCompare(b.start_date || '9999'),
+                'date-desc': (a, b) => (b.start_date || '').localeCompare(a.start_date || ''),
+                'name': (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'),
+                'new': (a, b) => Number(b.id) - Number(a.id)
+            }[filters.sort];
+            list.sort((a, b) => (drafts.has(b.id) - drafts.has(a.id)) || cmp(a, b));
+            return list;
+        }
+
+        function updateCount() {
+            const v = visible().length;
+            $('#adm-count').textContent = 'Показано ' + v + ' из ' + store.length + (drafts.size ? ' · черновиков: ' + drafts.size : '');
+        }
+
+        function renderList() {
+            const v = visible();
+            $('#adm-list').innerHTML = v.length ? v.map(cardHTML).join('') : '<p style="color:var(--ink-400)">' + (store.length ? 'Ничего не найдено — измените фильтры.' : 'Событий пока нет. Нажмите «Новое событие».') + '</p>';
+            updateCount();
+        }
+
+        function renderFilters() {
+            $('#f-type').innerHTML = '<option value="">Все типы</option>' + Object.keys(TYPES).map(k => `<option value="${k}">${TYPES[k]}</option>`).join('');
+            $('#f-col').innerHTML = '<option value="">Все подборки</option><option value="__none">Без подборки</option>' + COLS.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+        }
+
+        // ============================================================
+        // Действия
+        // ============================================================
+        function newEvent() {
+            const ev = { id: Date.now(), name: '', type: 'other', address: '', coords: { lat: null, lng: null }, start_date: '', end_date: null, price: 0, description: '' };
+            while (store.some(e => e.id === ev.id)) ev.id++;
+            store.unshift(ev);
+            drafts.add(ev.id);
+            open.add(ev.id);
+            filters.q = ''; filters.type = ''; filters.col = '';
+            $('#f-q').value = ''; $('#f-type').value = ''; $('#f-col').value = '';
+            renderList();
+            const c = cardEl(ev);
+            if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'start' }); const n = $('[data-f=name]', c); if (n) n.focus({ preventScroll: true }); }
+            if (!fileHandle) saveDraft();
+        }
+
+        function duplicate(ev) {
+            const copy = clone(ev);
+            copy.id = Date.now();
+            while (store.some(e => e.id === copy.id)) copy.id++;
+            copy.name = (ev.name || '') + ' (копия)';
+            store.splice(store.indexOf(ev) + 1, 0, copy);
+            open.add(copy.id);
+            renderList();
+            const c = cardEl(copy); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            touch(copy);
+        }
+
+        function remove(ev) {
+            if (!confirm('Удалить событие «' + (ev.name || 'без названия') + '»?\nОно пропадёт с сайта сразу после записи в файл.')) return;
+            const idx = store.indexOf(ev);
+            const wasDraft = drafts.has(ev.id);
+            store.splice(idx, 1);
+            drafts.delete(ev.id); open.delete(ev.id);
+            renderList();
+            touch(null);
+            toast('Событие удалено', '', {
+                label: 'Отменить', fn: () => {
+                    store.splice(idx, 0, ev);
+                    if (wasDraft) drafts.add(ev.id);
+                    renderList(); touch(ev);
+                }
+            });
+        }
+
+        async function geocode(ev, card) {
+            const addr = String(ev.address || '').trim();
+            if (!addr) { toast('Сначала введите адрес', 'err'); return; }
+            const btn = $('[data-act=geocode]', card);
+            btn.disabled = true; btn.textContent = 'Ищу…';
+            try {
+                const q = /москв/i.test(addr) ? addr : addr + ', Москва';
+                const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+                const d = await r.json();
+                if (!d.length) { toast('Адрес не найден — уточните его или впишите координаты вручную', 'err'); }
+                else {
+                    ev.coords = { lat: parseFloat(parseFloat(d[0].lat).toFixed(6)), lng: parseFloat(parseFloat(d[0].lon).toFixed(6)) };
+                    $('[data-f=lat]', card).value = ev.coords.lat;
+                    $('[data-f=lng]', card).value = ev.coords.lng;
+                    $('[data-role=maplink]', card).innerHTML = `<a href="https://www.openstreetmap.org/?mlat=${ev.coords.lat}&mlon=${ev.coords.lng}#map=17/${ev.coords.lat}/${ev.coords.lng}" target="_blank" rel="noopener">Проверить точку на карте</a>`;
+                    refreshText(ev); touch(ev);
+                }
+            } catch (e) { toast('Не удалось связаться с сервисом геокодинга', 'err'); }
+            btn.disabled = false; btn.textContent = 'Найти координаты';
+        }
+
+        // ============================================================
+        // Обработчики событий
+        // ============================================================
+        document.addEventListener('click', async e => {
+            const t = e.target.closest('[data-act]');
+            if (!t) return;
+            const act = t.dataset.act;
+            const card = t.closest('.adm-ev');
+            const ev = card ? byId(card.dataset.id) : null;
+            const i = t.dataset.i !== undefined ? parseInt(t.dataset.i, 10) : -1;
+
+            switch (act) {
+                case 'new': newEvent(); break;
+                case 'connect-file': connectFile(); break;
+                case 'resume-file': resumeFile(); break;
+                case 'connect-images': connectImages(); break;
+                case 'resume-images': resumeImages(); break;
+                case 'dl-js': download('events.js', serialize('js'), 'application/javascript'); break;
+                case 'dl-json': download('events.json', serialize('json'), 'application/json'); break;
+                case 'draft-restore': restoreDraft(); break;
+                case 'draft-discard': clearDraft(); $('#adm-banner').hidden = true; break;
+            }
+            if (!ev) return;
+
+            switch (act) {
+                case 'toggle':
+                    if (open.has(ev.id)) open.delete(ev.id); else open.add(ev.id);
+                    refreshCard(ev);
+                    break;
+                case 'col': {
+                    const id = t.dataset.col;
+                    const cur = ev.collections || [];
+                    ev.collections = cur.includes(id) ? cur.filter(x => x !== id) : cur.concat(id);
+                    if (!ev.collections.length) delete ev.collections;
+                    refreshChips(ev); touch(ev);
+                    break;
+                }
+                case 'geocode': geocode(ev, card); break;
+                case 'dup': duplicate(ev); break;
+                case 'del': remove(ev); break;
+                case 'clear-main':
+                    ev.photo = ''; delete ev.photo;
+                    refreshPhotos(ev); refreshThumb(ev); touch(ev);
+                    break;
+                case 'g-add':
+                    ev.gallery = (ev.gallery || []).concat('');
+                    refreshPhotos(ev);
+                    { const inputs = card.querySelectorAll('[data-f=gallery]'); if (inputs.length) inputs[inputs.length - 1].focus(); }
+                    break;
+                case 'g-del':
+                    ev.gallery.splice(i, 1);
+                    if (!ev.gallery.length) delete ev.gallery;
+                    refreshPhotos(ev); touch(ev);
+                    break;
+                case 'g-up': case 'g-down': {
+                    const j = act === 'g-up' ? i - 1 : i + 1;
+                    if (j < 0 || j >= ev.gallery.length) break;
+                    [ev.gallery[i], ev.gallery[j]] = [ev.gallery[j], ev.gallery[i]];
+                    refreshPhotos(ev); touch(ev);
+                    break;
+                }
+                case 'g-main': {
+                    const p = ev.gallery[i];
+                    if (!p) break;
+                    ev.gallery.splice(i, 1);
+                    if (ev.photo) ev.gallery.unshift(ev.photo);
+                    ev.photo = p;
+                    if (!ev.gallery.length) delete ev.gallery;
+                    refreshPhotos(ev); refreshThumb(ev); touch(ev);
+                    break;
+                }
+                case 'upload':
+                    if (!imagesDir) { toast('Сначала подключите папку images — кнопка вверху страницы', 'err'); break; }
+                    uploadTarget = { id: ev.id, slot: t.dataset.slot };
+                    $('#adm-file').value = '';
+                    $('#adm-file').click();
+                    break;
+            }
+        });
+
+        document.addEventListener('input', e => {
+            const t = e.target;
+            if (t.matches('#f-q')) { filters.q = t.value; renderList(); return; }
+            const f = t.dataset && t.dataset.f;
+            if (!f) return;
+            const card = t.closest('.adm-ev');
+            const ev = card && byId(card.dataset.id);
+            if (!ev) return;
+            switch (f) {
+                case 'lat': case 'lng':
+                    ev.coords = ev.coords || {};
+                    ev.coords[f] = toNum(t.value);
+                    break;
+                case 'price': ev.price = t.value === '' ? 0 : Math.max(0, Number(t.value)); break;
+                case 'end_date': ev.end_date = t.value || null; break;
+                case 'photo': ev.photo = toPath(t.value); if (!ev.photo) delete ev.photo; refreshThumbSoon(ev); break;
+                case 'gallery': ev.gallery[parseInt(t.dataset.i, 10)] = toPath(t.value); refreshThumbSoon(ev); break;
+                default: ev[f] = t.value;
+            }
+            touch(ev);
+            refreshText(ev);
+        });
+
+        $('#f-type').addEventListener('change', e => { filters.type = e.target.value; renderList(); });
+        $('#f-col').addEventListener('change', e => { filters.col = e.target.value; renderList(); });
+        $('#f-sort').addEventListener('change', e => { filters.sort = e.target.value; renderList(); });
+        $('#adm-file').addEventListener('change', e => onFilesChosen(e.target.files));
+
+        // ============================================================
+        // Черновик во вкладке (когда файл не подключён)
+        // ============================================================
+        function checkDraft() {
+            if (fileHandle || pendingFile) return;
+            let d = null;
+            try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { /* ignore */ }
+            if (!d || !Array.isArray(d.events) || JSON.stringify(d.events) === JSON.stringify(store)) return;
+            const b = $('#adm-banner');
+            b.innerHTML = 'В этой вкладке остались несохранённые изменения от ' + esc(new Date(d.ts).toLocaleString('ru-RU')) + '. ' +
+                '<button type="button" class="adm-btn adm-btn--main" data-act="draft-restore">Восстановить</button>' +
+                '<button type="button" class="adm-btn adm-btn--ghost" data-act="draft-discard">Отбросить</button>';
+            b.hidden = false;
+        }
+        function restoreDraft() {
+            try {
+                const d = JSON.parse(localStorage.getItem(DRAFT_KEY));
+                store = d.events; drafts = new Set(d.drafts || []); dirty = true;
+                $('#adm-banner').hidden = true;
+                renderList();
+                setStatus('Черновик восстановлен — подключите файл, чтобы записать изменения', 'warn');
+            } catch (err) { toast('Не удалось восстановить черновик', 'err'); }
+        }
+
+        // ============================================================
+        // Старт
+        // ============================================================
+        async function init() {
+            store = clone(typeof eventsData !== 'undefined' && Array.isArray(eventsData) ? eventsData : []);
+            renderFilters();
+            renderConn();
+            renderList();
+            if (HAS_FS) {
+                const fh = await idbGet('file');
+                const dh = await idbGet('dir');
+                if (fh) {
+                    try {
+                        if ((await fh.queryPermission({ mode: 'readwrite' })) === 'granted') await attachFile(fh);
+                        else pendingFile = fh;
+                    } catch (e) { pendingFile = null; }
+                }
+                if (dh) {
+                    try {
+                        if ((await dh.queryPermission({ mode: 'readwrite' })) === 'granted') imagesDir = dh;
+                        else pendingDir = dh;
+                    } catch (e) { pendingDir = null; }
+                }
+            }
+            renderConn();
+            renderList();
+            checkDraft();
+            if (!fileHandle) setStatus(HAS_FS ? 'Файл данных не подключён — изменения не попадут на сайт' : '', 'warn');
+        }
+        init();
+    })();
+    </script>
+</body>
+</html>

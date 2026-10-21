@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить событие — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2>Добавить событие</h2>
+
+            <form id="event-form" class="event-form">
+                <div class="form-group">
+                    <label>Название события *</label>
+                    <input type="text" id="event-name" placeholder="Введите название события" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Описание события *</label>
+                    <textarea id="event-description" rows="5" placeholder="Расскажите о событии" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Стоимость *</label>
+                    <input type="text" id="event-price" placeholder="Например: Бесплатно или 500 ₽" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Ссылка на событие *</label>
+                    <input type="url" id="event-link" placeholder="https://..." required>
+                </div>
+
+                <button type="submit" id="event-submit" class="btn-large" style="width: 100%; justify-content: center;">Отправить</button>
+                <p id="event-error" style="display: none; color: #c0392b; margin-top: 10px;"></p>
+            </form>
+
+            <div id="success-message" style="display: none; margin-top: 20px; text-align: center;">
+                <p>Спасибо! Событие отправлено на рассмотрение.</p>
+                <a href="afisha.html" class="btn-small">Перейти к афише</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ============================================================
+        // НАСТРОЙКА GOOGLE ФОРМЫ
+        // Ссылка формы должна заканчиваться на /formResponse
+        // (не /viewform!). ID полей — это entry.XXXXXXXXXX.
+        // Создайте отдельную Google форму с 4 полями и вставьте
+        // её ссылку и ID полей сюда.
+        // ============================================================
+        const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdwC3BRMzwsMLv66lUU4Md9jqnfAQkEouGrT9sS17fgqbLYLA/formResponse';
+
+        const GOOGLE_ENTRIES = {
+            name:        'entry.1243189086',  // Название события
+            description: 'entry.204608571',  // Описание события
+            price:       'entry.94990756',  // Стоимость
+            link:        'entry.1394662758'   // Ссылка на событие
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('event-form');
+            const submitBtn = document.getElementById('event-submit');
+            const errorEl = document.getElementById('event-error');
+            const successEl = document.getElementById('success-message');
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                errorEl.style.display = 'none';
+
+                if (GOOGLE_FORM_URL.indexOf('ВАШ_ID_ФОРМЫ') !== -1 || GOOGLE_ENTRIES.name.indexOf('entry.000000000') === 0) {
+                    errorEl.textContent = 'Форма ещё не подключена: укажите GOOGLE_FORM_URL и GOOGLE_ENTRIES в коде страницы.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Отправка...';
+
+                const body = new URLSearchParams();
+                body.append(GOOGLE_ENTRIES.name, document.getElementById('event-name').value);
+                body.append(GOOGLE_ENTRIES.description, document.getElementById('event-description').value);
+                body.append(GOOGLE_ENTRIES.price, document.getElementById('event-price').value);
+                body.append(GOOGLE_ENTRIES.link, document.getElementById('event-link').value);
+
+                try {
+                    // no-cors: браузер не покажет ответ Google, но данные отправятся
+                    await fetch(GOOGLE_FORM_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: body.toString()
+                    });
+                    form.style.display = 'none';
+                    successEl.style.display = 'block';
+                } catch (err) {
+                    errorEl.textContent = 'Не удалось отправить событие. Проверьте соединение и попробуйте ещё раз.';
+                    errorEl.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

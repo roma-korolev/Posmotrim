@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подборки — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2>Подборки</h2>
+            
+            <div class="collection-grid" id="collection-grid">
+                <!-- Collections will be loaded dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collectionGrid = document.getElementById('collection-grid');
+            
+            collectionGrid.innerHTML = collections.map(collection => `
+                <a href="collection.html?id=${collection.id}" class="collection-card">
+                    <h3>${collection.name}</h3>
+                    <p>${collection.description}</p>
+                </a>
+            `).join('');
+        });
+    </script>
+</body>
+</html>

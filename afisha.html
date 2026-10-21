@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Афиша — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2>Афиша событий</h2>
+            
+            <div class="field-row">
+                <input type="text" id="address-input" placeholder="Введите адрес для поиска событий рядом">
+            </div>
+
+            <div class="filters">
+                <h3>Фильтры</h3>
+                <div class="filter-group">
+                    <label>Тип события:</label>
+                    <select id="filter-type">
+                        <option value="">Все типы</option>
+                        <option value="theater">Театр</option>
+                        <option value="cinema">Кино</option>
+                        <option value="lecture">Лекции</option>
+                        <option value="exhibition">Выставки</option>
+                        <option value="public-talk">Паблик-токи</option>
+                        <option value="other">Другое</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Цена:</label>
+                    <select id="filter-price">
+                        <option value="">Любая цена</option>
+                        <option value="free">Бесплатные</option>
+                        <option value="0-500">до 500 ₽</option>
+                        <option value="500-1000">500 - 1000 ₽</option>
+                        <option value="1000-2000">1000 - 2000 ₽</option>
+                        <option value="2000+">от 2000 ₽</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Дата:</label>
+                    <select id="filter-date-type">
+                        <option value="">Все даты</option>
+                        <option value="today">Сегодня</option>
+                        <option value="week">В течение недели</option>
+                        <option value="month">В течение месяца</option>
+                        <option value="custom">Другая дата</option>
+                    </select>
+                    <input type="date" id="filter-date-custom" style="display: none; margin-top: 5px;">
+                </div>
+                <div class="filter-group">
+                    <label>Подборки:</label>
+                    <input type="text" id="collection-input" placeholder="Введите название подборки" autocomplete="off">
+                    <div id="collection-suggestions" class="collection-suggestions" style="display: none;"></div>
+                    <div id="selected-collections" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px;"></div>
+                </div>
+                <button id="search-button" class="btn-large" style="margin-top: 20px;">Найти события</button>
+            </div>
+
+            <div class="events-grid" id="events-container">
+                <p>Введите адрес для поиска событий рядом</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentEvents = [];
+        let currentSort = 'distance';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchButton = document.getElementById('search-button');
+            const addressInput = document.getElementById('address-input');
+            const eventsContainer = document.getElementById('events-container');
+            
+            const filterType = document.getElementById('filter-type');
+            const filterPrice = document.getElementById('filter-price');
+            const filterDateType = document.getElementById('filter-date-type');
+            const filterDateCustom = document.getElementById('filter-date-custom');
+            const collectionInput = document.getElementById('collection-input');
+            const collectionSuggestions = document.getElementById('collection-suggestions');
+            const selectedCollectionsDiv = document.getElementById('selected-collections');
+            
+            let selectedCollections = [];
+            let debounceTimer;
+
+            // Показать/скрыть поле ввода даты при выборе "Другая дата"
+            filterDateType.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    filterDateCustom.style.display = 'block';
+                } else {
+                    filterDateCustom.style.display = 'none';
+                }
+                applyFiltersAndSort();
+            });
+
+            filterDateCustom.addEventListener('change', applyFiltersAndSort);
+
+            // Автокомплит подборок
+            collectionInput.addEventListener('input', function() {
+                const query = collectionInput.value.trim();
+                
+                clearTimeout(debounceTimer);
+                
+                if (query.length < 2) {
+                    collectionSuggestions.style.display = 'none';
+                    return;
+                }
+                
+                debounceTimer = setTimeout(function() {
+                    const suggestions = getCollectionSuggestions(query);
+                    
+                    if (suggestions.length > 0) {
+                        collectionSuggestions.innerHTML = suggestions.map(s => 
+                            `<div class="suggestion-item" data-id="${s.id}" data-name="${s.name}">${s.name}</div>`
+                        ).join('');
+                        collectionSuggestions.style.display = 'block';
+                    } else {
+                        collectionSuggestions.style.display = 'none';
+                    }
+                }, 300);
+            });
+
+            // Выбор подсказки
+            collectionSuggestions.addEventListener('click', function(e) {
+                if (e.target.classList.contains('suggestion-item')) {
+                    const collectionId = e.target.dataset.id;
+                    const collectionName = e.target.dataset.name;
+                    
+                    if (!selectedCollections.find(c => c.id === collectionId)) {
+                        selectedCollections.push({ id: collectionId, name: collectionName });
+                        updateSelectedCollections();
+                        applyFiltersAndSort();
+                    }
+                    
+                    collectionInput.value = '';
+                    collectionSuggestions.style.display = 'none';
+                }
+            });
+
+            // Добавление по Enter
+            collectionInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const suggestions = collectionSuggestions.querySelectorAll('.suggestion-item');
+                    if (suggestions.length > 0) {
+                        suggestions[0].click();
+                    }
+                }
+            });
+
+            // Скрытие подсказок при клике вне
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.filter-group')) {
+                    collectionSuggestions.style.display = 'none';
+                }
+            });
+
+            // Обновление отображения выбранных подборок
+            function updateSelectedCollections() {
+                selectedCollectionsDiv.innerHTML = selectedCollections.map(c => `
+                    <div class="collection-tag">
+                        ${c.name}
+                        <span class="remove-btn" data-id="${c.id}">×</span>
+                    </div>
+                `).join('');
+                
+                // Обработка удаления
+                selectedCollectionsDiv.querySelectorAll('.remove-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        selectedCollections = selectedCollections.filter(c => c.id !== id);
+                        updateSelectedCollections();
+                        applyFiltersAndSort();
+                    });
+                });
+            }
+
+            searchButton.addEventListener('click', async function() {
+                const address = addressInput.value.trim();
+                
+                if (!address) {
+                    alert('Пожалуйста, введите адрес');
+                    return;
+                }
+
+                searchButton.disabled = true;
+                searchButton.textContent = 'Поиск...';
+                eventsContainer.innerHTML = '<p>Ищем события рядом...</p>';
+
+                try {
+                    currentEvents = await findNearestEvents(address, 10, 50);
+                    applyFiltersAndSort();
+                } catch (error) {
+                    console.error('Ошибка поиска:', error);
+                    eventsContainer.innerHTML = '<p>Произошла ошибка при поиске. Попробуйте позже.</p>';
+                }
+
+                searchButton.disabled = false;
+                searchButton.textContent = 'Найти события';
+            });
+
+            addressInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchButton.click();
+                }
+            });
+
+            // Фильтры
+            [filterType, filterPrice].forEach(filter => {
+                filter.addEventListener('change', applyFiltersAndSort);
+            });
+
+            function applyFiltersAndSort() {
+                let filtered = [...currentEvents];
+
+                // Фильтр по типу
+                if (filterType.value) {
+                    filtered = filtered.filter(event => event.type === filterType.value);
+                }
+
+                // Фильтр по цене
+                if (filterPrice.value) {
+                    if (filterPrice.value === 'free') {
+                        filtered = filtered.filter(event => event.price === 0);
+                    } else if (filterPrice.value === '0-500') {
+                        filtered = filtered.filter(event => event.price > 0 && event.price <= 500);
+                    } else if (filterPrice.value === '500-1000') {
+                        filtered = filtered.filter(event => event.price > 500 && event.price <= 1000);
+                    } else if (filterPrice.value === '1000-2000') {
+                        filtered = filtered.filter(event => event.price > 1000 && event.price <= 2000);
+                    } else if (filterPrice.value === '2000+') {
+                        filtered = filtered.filter(event => event.price > 2000);
+                    }
+                }
+
+                // Фильтр по дате
+                if (filterDateType.value) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (filterDateType.value === 'today') {
+                        filtered = filtered.filter(event => {
+                            const eventDate = new Date(event.start_date);
+                            eventDate.setHours(0, 0, 0, 0);
+                            return eventDate.getTime() === today.getTime();
+                        });
+                    } else if (filterDateType.value === 'week') {
+                        const weekLater = new Date(today);
+                        weekLater.setDate(weekLater.getDate() + 7);
+                        filtered = filtered.filter(event => {
+                            const eventDate = new Date(event.start_date);
+                            eventDate.setHours(0, 0, 0, 0);
+                            return eventDate >= today && eventDate <= weekLater;
+                        });
+                    } else if (filterDateType.value === 'month') {
+                        const monthLater = new Date(today);
+                        monthLater.setMonth(monthLater.getMonth() + 1);
+                        filtered = filtered.filter(event => {
+                            const eventDate = new Date(event.start_date);
+                            eventDate.setHours(0, 0, 0, 0);
+                            return eventDate >= today && eventDate <= monthLater;
+                        });
+                    } else if (filterDateType.value === 'custom' && filterDateCustom.value) {
+                        const customDate = new Date(filterDateCustom.value);
+                        customDate.setHours(0, 0, 0, 0);
+                        filtered = filtered.filter(event => {
+                            const eventDate = new Date(event.start_date);
+                            eventDate.setHours(0, 0, 0, 0);
+                            return eventDate.getTime() === customDate.getTime();
+                        });
+                    }
+                }
+
+                // Фильтр по подборкам (если подборки не выбраны, ищем во всех событиях)
+                if (selectedCollections.length > 0) {
+                    filtered = filtered.filter(event => {
+                        if (!event.collections) return false;
+                        return selectedCollections.some(collection => event.collections.includes(collection.id));
+                    });
+                }
+
+                // Сортировка по расстоянию
+                filtered.sort((a, b) => a.distance - b.distance);
+
+                displayEvents(filtered);
+            }
+
+            function displayEvents(events) {
+                if (events.length === 0) {
+                    eventsContainer.innerHTML = '<p>Событий не найдено</p>';
+                    return;
+                }
+
+                eventsContainer.innerHTML = events.map(event => `
+                    <div class="event-card">
+                        ${renderEventCardPhoto(event)}
+                        <h3>${event.name}</h3>
+                        <p><strong>Тип:</strong> ${getEventTypeName(event.type)}</p>
+                        <p><strong>Адрес:</strong> ${event.address}</p>
+                        <p><strong>Дата:</strong> ${formatDate(event.start_date, event.end_date)}</p>
+                        <p><strong>Расстояние:</strong> ${event.distance.toFixed(1)} км</p>
+                        <p><strong>Цена:</strong> ${formatPrice(event.price)}</p>
+                        <a href="event.html?id=${event.id}&address=${encodeURIComponent(addressInput.value)}" class="btn-small">Подробнее</a>
+                    </div>
+                `).join('');
+            }
+        });
+    </script>
+</body>
+</html>

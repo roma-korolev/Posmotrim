@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Контакты — Посмотрим</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="events.js"></script>
+    <script src="data.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo"><a href="index.html">Посмотрим</a></div>
+            <nav>
+                <a href="afisha.html">Афиша</a>
+                <a href="collections.html">Подборки</a>
+                <a href="add-event.html">Добавить событие</a>
+                <a href="about.html">О проекте</a>
+                <a href="contacts.html">Контакты</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="page-content">
+        <div class="container">
+            <h2>Контакты</h2>
+
+            <form id="contact-form" class="contact-form">
+                <div class="form-group">
+                    <label>Ваше имя</label>
+                    <input type="text" id="contact-name" placeholder="Введите ваше имя" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="contact-email" placeholder="Введите ваш email" required>
+                </div>
+                <div class="form-group">
+                    <label>Сообщение</label>
+                    <textarea id="contact-message" placeholder="Введите ваше сообщение" required></textarea>
+                </div>
+                <button type="submit" id="contact-submit" class="btn-large" style="width: 100%; justify-content: center;">Отправить</button>
+                <p id="contact-error" style="display: none; color: #c0392b; margin-top: 10px;"></p>
+            </form>
+
+            <div id="contact-success" style="display: none; margin-top: 20px; text-align: center;">
+                <p>Спасибо! Ваше сообщение отправлено.</p>
+            </div>
+
+            <div class="event-detail" style="margin: 32px auto 0; max-width: 600px; text-align: center; padding: 30px;">
+                <h3 style="margin-top: 0;">Email для связи</h3>
+                <p class="description" style="margin: 0;">info@posmotrim.ru</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ============================================================
+        // НАСТРОЙКА GOOGLE ФОРМЫ
+        // Ссылка формы должна заканчиваться на /formResponse
+        // (не /viewform!). ID полей — это entry.XXXXXXXXXX.
+        // ============================================================
+        const GOOGLE_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScWv-XGV37W81wZS63SeNrzBq-NZwEQs7CmErjPHRvfZBBfIg/formResponse';
+
+        const GOOGLE_ENTRIES = {
+            name:    'entry.562910610',
+            email:   'entry.1945329252',
+            message: 'entry.146289893'
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('contact-form');
+            const submitBtn = document.getElementById('contact-submit');
+            const errorEl = document.getElementById('contact-error');
+            const successEl = document.getElementById('contact-success');
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                errorEl.style.display = 'none';
+
+                if (GOOGLE_FORM_URL.indexOf('ВАШ_ID_ФОРМЫ') !== -1 || GOOGLE_ENTRIES.name.indexOf('entry.000000000') === 0) {
+                    errorEl.textContent = 'Форма ещё не подключена: укажите GOOGLE_FORM_URL и GOOGLE_ENTRIES в коде страницы.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Отправка...';
+
+                const body = new URLSearchParams();
+                body.append(GOOGLE_ENTRIES.name, document.getElementById('contact-name').value);
+                body.append(GOOGLE_ENTRIES.email, document.getElementById('contact-email').value);
+                body.append(GOOGLE_ENTRIES.message, document.getElementById('contact-message').value);
+
+                try {
+                    // no-cors: браузер не покажет ответ Google, но данные отправятся
+                    await fetch(GOOGLE_FORM_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: body.toString()
+                    });
+                    form.style.display = 'none';
+                    successEl.style.display = 'block';
+                } catch (err) {
+                    errorEl.textContent = 'Не удалось отправить сообщение. Проверьте соединение и попробуйте ещё раз.';
+                    errorEl.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
